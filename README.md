@@ -32,7 +32,7 @@
 
 ```bash
 git clone https://github.com/GFuzatto/bombcrypto-bot.git
-cd bot
+cd bombcrypto-bot/bot
 pip install -r requirements.txt
 python main.py
 ```
