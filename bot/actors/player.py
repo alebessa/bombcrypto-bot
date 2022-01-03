@@ -1,22 +1,13 @@
-from subprocess import TimeoutExpired
 from shared import center
 from shared import im_path
-from shared import max_diff_centroid
-from shared import relative_box
-from shared import RelativeDimensions
 
 import imagesize
-from PIL.Image import FLIP_LEFT_RIGHT
 from pyautogui import click
 from pyautogui import hold
-from pyautogui import mouseDown
-from pyautogui import mouseUp
 from pyautogui import moveTo
 from pyautogui import press
-from pyautogui import locateOnScreen
 from pyautogui import locateCenterOnScreen
 from pyautogui import scroll
-from pyscreeze import screenshot
 from random import random
 from random import randint
 from random import uniform
@@ -34,7 +25,6 @@ class Player:
         self.state_img_map = {
             'error': ['error'],
             'new_map': ['new_map', 'new_map2'],
-            'captcha': ['captcha'],
             'login': ['connect'],
             'main': ['treasure_mode'],
             'heroes': ['heroes_title'],
@@ -54,13 +44,6 @@ class Player:
 
         self.last_prevent_stuck = None
         self.prevent_stuck_every = 2 * 60 # 2 mins
-
-        self.captcha_dims = RelativeDimensions(
-            x_offset = 280,
-            y_offset = 177,
-            width = 400,
-            height = 265
-        )
 
     def check_game_state(self):
 
@@ -119,156 +102,15 @@ class Player:
         sleep(uniform(.05, .2))
         click()
 
-    def solve_captcha(self):
-        """DEPRECATED"""
-        # find captcha_box
-        x = self.game.position.left
-        y = self.game.position.top
-        prop = self.game.zoom / 100
-
-        captcha_box = relative_box(x, y, self.captcha_dims, prop)
-
-        # get piece_mask from rightmost side
-        piece_im_w = 70
-        piece_im_h = 160
-        piece_im_y_offset = -8
-
-
-        piece_mask_box = relative_box(
-            captcha_box.left,
-            captcha_box.top,
-            RelativeDimensions(
-                x_offset = self.captcha_dims.width - 5 - piece_im_w,
-                y_offset = piece_im_y_offset,
-                width = piece_im_w,
-                height = piece_im_h),
-            prop)
-        
-        piece_mask_im = screenshot(region = piece_mask_box)
-        flipped_piece_mask_im = piece_mask_im.transpose(FLIP_LEFT_RIGHT)
-
-
-        # get piece_centroid using horizontally flipped mask
-        piece_box = relative_box(
-            captcha_box.left,
-            captcha_box.top,
-            RelativeDimensions(
-                x_offset = 5,
-                y_offset = piece_im_y_offset,
-                width = piece_im_w,
-                height = piece_im_h),
-            prop)
-        piece_im = screenshot(region = piece_box)
-
-        piece_relative_x, piece_relative_y = max_diff_centroid(
-            piece_im,
-            flipped_piece_mask_im
-        )
-
-        piece_centroid = (
-            piece_box.left + piece_relative_x,
-            piece_box.top + piece_relative_y)
-        
-        # find captcha_start
-        captcha_start_centroid = self._find_any(
-            [
-                'captcha/drag_start',
-                'captcha/drag_start2',
-                'captcha/drag_start3'
-            ],
-            region=captcha_box,
-            timeout=2,
-            jitter=False)
-
-        
-        # mouseDown(captcha_start_centroid)
-        moveTo(captcha_start_centroid, duration=.2)
-        mouseDown()
-
-
-        # overdrag to right
-        moveTo(
-            x = captcha_box.left + captcha_box.width - 10,
-            y = captcha_start_centroid.y,
-            duration=.4)
-        
-
-        # find captcha_end
-        captcha_end_centroid = self._find_any(
-            [
-                'captcha/drag_end',
-                'captcha/drag_end2',
-                'captcha/drag_end3'
-            ],
-            region=captcha_box,
-            timeout=2,
-            jitter=False)
-
-
-        # find dragged_piece_centroid
-        dragged_piece_im = screenshot(region = piece_mask_box)
-        
-        (dragged_piece_relative_x,
-        dragged_piece_relative_y) = max_diff_centroid(
-            dragged_piece_im,
-            piece_mask_im)
-
-        dragged_piece_centroid = (
-            piece_mask_box.left + dragged_piece_relative_x,
-            piece_mask_box.top + dragged_piece_relative_y)
-
-        # find prop
-        prop = (
-            (captcha_end_centroid.x - captcha_start_centroid.x)
-            /
-            (dragged_piece_centroid[0] - piece_centroid[0])
-        )
-
-
-        # find piece_slot_centroid
-        captcha_img = screenshot(region = captcha_box)
-        sleep(.4)
-        captcha_img2 = screenshot(region = captcha_box)
-
-        (piece_slot_relative_x,
-        piece_slot_relative_y) = max_diff_centroid(
-            captcha_img,
-            captcha_img2)
-        
-        piece_slot_centroid = (
-            captcha_box.left + piece_slot_relative_x,
-            captcha_box.top + piece_slot_relative_y)
-        
-        # find drag dist
-        drag_dist = prop * (piece_slot_centroid[0] - piece_centroid[0])
-        drag_to_x = captcha_start_centroid.x + drag_dist
-        drag_to_y = captcha_start_centroid.y
-
-        
-        # drag and release click
-        moveTo(x=drag_to_x, y=drag_to_y, duration=.3)
-        mouseUp()
-
     def login(self):
         self._click_any(
             ['connect'],
             region=self.game.position,
             timeout=10)
 
-        try:
-            sleep(1)
-            while self._find_any(
-            ['captcha'],
-            region=self.game.position,
-            confidence=.95 * self.confidence_ratio,
-            timeout=2):
-                self.solve_captcha()
-        except TimeoutError as e:
-            print('Captcha solved!')
-
         self._click_any(
             ['sign'],
-            timeout=10)
+            timeout=15)
 
     def refresh(self):
         x, y = center(self.game.position)
@@ -287,15 +129,6 @@ class Player:
             ['heroes'],
             region=self.game.position,
             timeout=10)
-
-        try:
-            if self._find_any(
-            ['captcha'],
-            region=self.game.position,
-            timeout=5):
-                self.solve_captcha()
-        except TimeoutError:
-            pass
 
         self._click_any(
             ['disabled_work', 'enabled_work'],
@@ -353,18 +186,9 @@ class Player:
 
     def new_map(self):
         self._click_any(
-            ['new_map'],
+            self.state_img_map['new_map'],
             region=self.game.position,
             timeout=5)
-
-        try:
-            if self._find_any(
-            ['captcha'],
-            region=self.game.position,
-            timeout=5):
-                self.solve_captcha()
-        except TimeoutError:
-            pass
 
     def error(self):
         self._click_any(
