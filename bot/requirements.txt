@@ -1,0 +1,6 @@
+imagesize
+imutils
+opencv-python==4.5.3.56
+pyautogui
+Pillow
+scikit-image
