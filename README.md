@@ -23,7 +23,7 @@
 
 
 
-## running the script yourself
+## running the script yourself because you dont trust my exe file
 
 1. install [python](https://www.python.org/downloads/)
 1. install [pip](https://pip.pypa.io/en/stable/installation/)
