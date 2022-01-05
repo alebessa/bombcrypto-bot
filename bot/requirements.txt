@@ -1,3 +1,4 @@
 imagesize
+numpy
 pyautogui
 Pillow
