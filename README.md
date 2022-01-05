@@ -1,5 +1,10 @@
 # Yet another [bombcrypto](https://bombcrypto.io/) bot
 
+## current status
+```diff
+- Broken
+```
+
 ## instalation
 
 * [normie version](https://storage.googleapis.com/fuzzybomber/fuzzybomber-v0.0.2-alpha.exe)
