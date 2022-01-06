@@ -1,7 +1,6 @@
 from shared import center
 from shared import im_path
 
-from functools import wraps
 import imagesize
 from pyautogui import click
 from pyautogui import hold
