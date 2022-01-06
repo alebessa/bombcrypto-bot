@@ -7,7 +7,7 @@
 
 ## instalation
 
-* [normie version](https://storage.googleapis.com/fuzzybomber/fuzzybomber-v0.1.0-alpha.exe)
+* [normie version](https://storage.googleapis.com/fuzzybomber/fuzzybomber-v0.1.1-alpha.exe)
 * [pro hacker version](https://pro-hacker-version.bombcrypto.fuzatto.com/)
 * [i think bots shouldnt exist version](https://app.bombcrypto.io/)
 * [omg windows says its not secure version](#running-the-script-yourself-because-you-dont-trust-my-exe-file)
