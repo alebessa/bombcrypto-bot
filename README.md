@@ -2,7 +2,7 @@
 
 ## current status
 ```diff
-- Broken
++ Working
 ```
 
 ## instalation
