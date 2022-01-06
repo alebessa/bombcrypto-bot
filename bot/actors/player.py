@@ -1,6 +1,7 @@
 from shared import center
 from shared import im_path
 
+from functools import wraps
 import imagesize
 from pyautogui import click
 from pyautogui import hold
@@ -11,22 +12,20 @@ from random import uniform
 from time import sleep
 from time import time
 
+
 class Player:
     confidence_ratio = .95
-    
-    def __init__(self, game, mouse_lock):
+    state_img_map = {
+        'error': ['error'],
+        'new_map': ['new_map', 'new_map2', 'new_map3'],
+        'login': ['connect'],
+        'main': ['treasure_mode'],
+        'heroes': ['heroes_title', 'heroes_title2'],
+        'playing': ['play_header', 'play_header2', 'play_header3']
+    }
 
-        self.game = game
-        self.mouse_lock = mouse_lock
+    def reset_player_stats(self):
 
-        self.state_img_map = {
-            'error': ['error'],
-            'new_map': ['new_map', 'new_map2', 'new_map3'],
-            'login': ['connect'],
-            'main': ['treasure_mode'],
-            'heroes': ['heroes_title', 'heroes_title2'],
-            'playing': ['play_header', 'play_header2', 'play_header3']
-        }
         self.state = None 
         self.new_state = None
 
@@ -41,6 +40,13 @@ class Player:
 
         self.last_prevent_stuck = None
         self.prevent_stuck_every = 2 * 60 # 2 mins
+
+    
+    def __init__(self, game, mouse_lock):
+
+        self.game = game
+        self.mouse_lock = mouse_lock
+        self.reset_player_stats()
 
     def check_game_state(self):
 
@@ -118,8 +124,6 @@ class Player:
         
         sleep(5)
 
-        self.login()
-
     def new_shift(self):
 
         self._click_any(
@@ -187,77 +191,92 @@ class Player:
             region=self.game.position,
             timeout=5)
 
+
+    def play_loop(self):
+
+        self.new_state = self.check_game_state()
+        print(f'[GAME{self.game.id}] Found state: {self.new_state}')                
+
+        # Unknown timer running
+        if isinstance(self.last_unknown_time, float):
+
+            # Unknown timeout reached
+            if time() - self.last_unknown_time > self.unknown_timeout:
+                self.last_unknown_time = None
+                with self.mouse_lock:
+                    self.refresh()
+                    self.login()
+                
+            # Known state found
+            if self.state == 'unknown' and self.new_state != 'unknown':
+                self.last_unknown_time = None
+
+        # Begin unknown timer
+        if self.state != 'unknown' and self.new_state == 'unknown':
+            self.last_unknown_time = time()
+
+        # Login
+        if self.new_state == 'login':
+            
+            # First login or next login attempt
+            if self.state is None or time() - self.last_login > self.login_delay:
+                self.last_login = time()
+                with self.mouse_lock:
+                    self.login()
+
+        # Reached main menu
+        if self.state != 'main' and self.new_state == 'main':
+            
+            # New shift needed
+            if self.last_shift is None or time() - self.last_shift > self.shift_every:
+                self.last_shift = time()
+                with self.mouse_lock:
+                    self.new_shift()
+
+        # In-game
+        if self.new_state == 'playing':
+            
+            print(f'[GAME{self.game.id}] New shift in: {self.shift_every - (time() - self.last_shift)}')
+            print(f'[GAME{self.game.id}] Unstuck in: {self.prevent_stuck_every - (time() - self.last_prevent_stuck)}')
+            
+            # New shift needed
+            if time() - self.last_shift > self.shift_every:
+                with self.mouse_lock:
+                    self.exit_game()
+            
+            # Prevent stuck
+            elif time() - self.last_prevent_stuck > self.prevent_stuck_every:
+                self.last_prevent_stuck = time()
+                with self.mouse_lock:
+                    self.prevent_stuck()
+
+        # Found new map
+        if self.state != 'new_map' and self.new_state == 'new_map':
+            with self.mouse_lock:
+                self.new_map()
+
+        # Found error
+        if self.state != 'error' and self.new_state == 'error':
+            with self.mouse_lock:
+                self.error()
+
+        self.update_state()
+        sleep(uniform(2.5, 3.5))
+
+
     def play(self):
 
         while True:
-
-            self.new_state = self.check_game_state()
-            print(f'[GAME{self.game.id}] Found state: {self.new_state}')                
-
-            # Unknown timer running
-            if isinstance(self.last_unknown_time, float):
-
-                # Unknown timeout reached
-                if time() - self.last_unknown_time > self.unknown_timeout:
-                    self.last_unknown_time = None
-                    with self.mouse_lock:
-                        self.refresh()
-                    
-                # Known state found
-                if self.state == 'unknown' and self.new_state != 'unknown':
-                    self.last_unknown_time = None
-
-            # Begin unknown timer
-            if self.state != 'unknown' and self.new_state == 'unknown':
-                self.last_unknown_time = time()
-
-            # Login
-            if self.new_state == 'login':
+            try:
+                self.play_loop()
+            except Exception as e:
                 
-                # First login or next login attempt
-                if self.state is None or time() - self.last_login > self.login_delay:
-                    self.last_login = time()
-                    with self.mouse_lock:
-                        self.login()
+                print(f'[GAME{self.game.id}] Player crashed with error: "{e}". \nRespawning in 3...')
+                sleep(3)
+                self.refresh()
+                self.reset_player_stats()
 
-            # Reached main menu
-            if self.state != 'main' and self.new_state == 'main':
-                
-                # New shift needed
-                if self.last_shift is None or time() - self.last_shift > self.shift_every:
-                    self.last_shift = time()
-                    with self.mouse_lock:
-                        self.new_shift()
-
-            # In-game
-            if self.new_state == 'playing':
-                
-                print(f'[GAME{self.game.id}] New shift in: {self.shift_every - (time() - self.last_shift)}')
-                print(f'[GAME{self.game.id}] Unstuck in: {self.prevent_stuck_every - (time() - self.last_prevent_stuck)}')
-                
-                # New shift needed
-                if time() - self.last_shift > self.shift_every:
-                    with self.mouse_lock:
-                        self.exit_game()
-                
-                # Prevent stuck
-                elif time() - self.last_prevent_stuck > self.prevent_stuck_every:
-                    self.last_prevent_stuck = time()
-                    with self.mouse_lock:
-                        self.prevent_stuck()
-
-            # Found new map
-            if self.state != 'new_map' and self.new_state == 'new_map':
-                with self.mouse_lock:
-                    self.new_map()
-
-            # Found error
-            if self.state != 'error' and self.new_state == 'error':
-                with self.mouse_lock:
-                    self.error()
-
-            self.update_state()
-            sleep(uniform(2.5, 3.5))
+            
 
 
 def spawn_player(game, mouse_lock):
