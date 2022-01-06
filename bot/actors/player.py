@@ -7,9 +7,6 @@ from pyautogui import hold
 from pyautogui import moveTo
 from pyautogui import press
 from pyautogui import locateCenterOnScreen
-from pyautogui import scroll
-from random import random
-from random import randint
 from random import uniform
 from time import sleep
 from time import time
@@ -24,11 +21,11 @@ class Player:
 
         self.state_img_map = {
             'error': ['error'],
-            'new_map': ['new_map', 'new_map2'],
+            'new_map': ['new_map', 'new_map2', 'new_map3'],
             'login': ['connect'],
             'main': ['treasure_mode'],
-            'heroes': ['heroes_title'],
-            'playing': ['play_header', 'play_header2']
+            'heroes': ['heroes_title', 'heroes_title2'],
+            'playing': ['play_header', 'play_header2', 'play_header3']
         }
         self.state = None 
         self.new_state = None
@@ -61,7 +58,7 @@ class Player:
         self.state = self.new_state
 
     def _find_any(self, names, confidence = 0.999,
-        region = None, timeout = 10, jitter=.25):
+        region = None, timeout = 10, jitter=False):
         
         start = time()
 
@@ -97,9 +94,9 @@ class Player:
 
 
     def _click_any(self, *args, **kwargs):
-        x, y= self._find_any(*args, **kwargs)
-        moveTo(x, y, duration=uniform(.2, .333))
-        sleep(uniform(.05, .2))
+        x, y = self._find_any(*args, **kwargs)
+        moveTo(x, y, duration=.01)
+        sleep(uniform(.05, .1))
         click()
 
     def login(self):
@@ -110,7 +107,7 @@ class Player:
 
         self._click_any(
             ['sign'],
-            timeout=15)
+            timeout=25)
 
     def refresh(self):
         x, y = center(self.game.position)
@@ -130,31 +127,25 @@ class Player:
             region=self.game.position,
             timeout=10)
 
+        sleep(.666)
+
+        try:
+
+            while coords:= self._find_any(
+                ['work_all'],
+                region=self.game.position,
+                confidence=.9 * self.confidence_ratio,
+                timeout=4):
+
+                x, y = coords
+                click(x, y)
+                sleep(.5)
+
+        except TimeoutError as e:
+            pass
+
         self._click_any(
-            ['disabled_work', 'enabled_work'],
-            region=self.game.position,
-            confidence=.9 * self.confidence_ratio,
-            timeout=10,
-
-        )
-
-        for _ in range(60):
-            sleep(random() / 10)
-            scroll(-randint(0,4))
-
-        while True:
-            try:
-                x, y = self._find_any(
-                    ['disabled_work'],
-                    region=self.game.position,
-                    timeout=3)
-                moveTo(x, y, duration = .2)
-                click()
-            except TimeoutError:
-                break
-        
-        self._click_any(
-            ['x', 'x2'],
+            ['x', 'x2', 'x3'],
             region=self.game.position,
             timeout=5)
 
@@ -192,7 +183,7 @@ class Player:
 
     def error(self):
         self._click_any(
-            ['ok', 'x'],
+            ['ok', 'x', 'x1', 'x2'],
             region=self.game.position,
             timeout=5)
 
