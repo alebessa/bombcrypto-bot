@@ -12,6 +12,7 @@
 * [i think bots shouldnt exist version](https://app.bombcrypto.io/)
 * [omg windows says its not secure version](#running-the-script-yourself-because-you-dont-trust-my-exe-file)
 
+* [older releases](docs/versions.md)
 
 ## in action
 
