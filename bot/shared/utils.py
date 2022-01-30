@@ -6,6 +6,47 @@ from pyautogui import Point
 from pyscreeze import Box
 import sys
 
+ColorNamedTuple = namedtuple('Colors',['font', 'background', 'border'])
+
+log_color_map = {
+    'success': ColorNamedTuple(
+        font='#1D8348',
+        background='#58D68D',
+        border='#1D8348'
+    ),
+    'error': ColorNamedTuple(
+        font='#943126',
+        background='#E6B0AA',
+        border='#943126'
+    ),
+    'warning': ColorNamedTuple(
+        font='#9A7D0A',
+        background='#F7DC6F',
+        border='#9A7D0A'
+    ),
+    'info': ColorNamedTuple(
+        font='#1C2833',
+        background='#ABB2B9',
+        border='#1C2833'
+    ),
+    'love': ColorNamedTuple(
+        font='#76448A',
+        background='#FADBD8',
+        border='#5B2C6F'
+    )
+}
+
+def log(t, msg):
+    assert t in log_color_map.keys()
+    assert isinstance(msg, str)
+
+    return {'message_type': t, 'message': msg}
+
+def command(id):
+    assert id in ['pause', 'resume', 'die']
+
+    return id
+
 def resource_path(relative_path):
     """PyInstaller compatible path wrapper"""
     if hasattr(sys, '_MEIPASS'):

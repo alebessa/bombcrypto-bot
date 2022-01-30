@@ -1,14 +1,12 @@
-from objects import Game
-from shared import im_path
-
 from pyautogui import locateAllOnScreen
+from typing import List
 
+from objects import Game
+from shared import command
+from shared import im_path
+from shared import log
 from shared import relative_box
 from shared import RelativeDimensions
-
-
-class NoGamesFound(Exception):
-    pass
 
 
 class GameManager:
@@ -22,9 +20,21 @@ class GameManager:
         width = 960,
         height = 600)
 
-    def __init__(self):
-        self.games = []
+    def __init__(self, logger, games: List[Game] = []):
+        self.games = games
+        self.logger = logger
 
+    def kill_all(self):
+        for game in self.games:
+            game.command_queue.put(command('die'))
+
+    def pause_all(self):
+        for game in self.games:
+            game.command_queue.put(command('pause'))
+
+    def resume_all(self):
+        for game in self.games:
+            game.command_queue.put(command('resume'))
 
     def _find_game_position(self, button_box, zoom):
         x = button_box.left
@@ -32,7 +42,6 @@ class GameManager:
         prop = zoom / 100
 
         return relative_box(x, y, self.game_dims, prop)
-
 
     def find_games(self):
 
@@ -49,4 +58,7 @@ class GameManager:
                 self.games.append(game)
         
         if len(self.games) == 0:
-            raise NoGamesFound('GameManager could not find Bombcrypto games.')
+            self.logger.put(log('error', 'GameManager could not find Bombcrypto games.'))
+        
+        else:
+            self.logger.put(log('success', f'GameManager found {len(self.games)} games!'))

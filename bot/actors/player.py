@@ -1,21 +1,26 @@
 from shared import center
 from shared import im_path
+from shared import log
 
 import imagesize
+from multiprocessing import Process
+from multiprocessing import Queue
 from pyautogui import click
 from pyautogui import hold
 from pyautogui import moveTo
 from pyautogui import press
 from pyautogui import locateCenterOnScreen
+from queue import Empty
 from random import uniform
 from time import sleep
 from time import time
+import sys
 
 
-class Player:
+class Player(Process):
     confidence_ratio = .95
     state_img_map = {
-        'error': ['error'],
+        'error': ['error', 'error2'],
         'new_map': ['new_map', 'new_map2', 'new_map3'],
         'login': ['connect'],
         'main': ['treasure_mode'],
@@ -40,12 +45,21 @@ class Player:
         self.last_prevent_stuck = None
         self.prevent_stuck_every = 2 * 60 # 2 mins
 
-    
-    def __init__(self, game, mouse_lock):
-
+    def __init__(self, game, mouse_lock, logger = None, command_queue = None):
+        super(Player, self).__init__()
         self.game = game
         self.mouse_lock = mouse_lock
+        self.logger = logger
+        self.command_queue = command_queue
         self.reset_player_stats()
+        self.paused = False
+        self.logger.put(log('success', f'Starting player {self.game.id}!'))
+
+    def pull_command(self):
+        try:
+            return self.command_queue.get(block=False)
+        except Empty:
+            return False
 
     def check_game_state(self):
 
@@ -97,7 +111,6 @@ class Player:
         
         return coords
 
-
     def _click_any(self, *args, **kwargs):
         x, y = self._find_any(*args, **kwargs)
         moveTo(x, y, duration=.01)
@@ -115,8 +128,8 @@ class Player:
             timeout=25)
 
     def refresh(self):
-        x, y = center(self.game.position)
-        click(x, y)
+        x, y, w, h = self.game.position
+        click(x + int(w/4), y + int(h/2))
 
         with hold('ctrl'):
             press('f5')
@@ -133,12 +146,16 @@ class Player:
         sleep(.666)
 
         try:
-
+            tries = 0
             while coords:= self._find_any(
                 ['work_all'],
                 region=self.game.position,
                 confidence=.9 * self.confidence_ratio,
                 timeout=4):
+                
+                tries += 1
+                if tries > 5:
+                    break
 
                 x, y = coords
                 click(x, y)
@@ -190,6 +207,18 @@ class Player:
             region=self.game.position,
             timeout=5)
 
+    def check_command(self):
+
+        if command := self.pull_command():
+
+            print(f'[GAME{self.game.id}] command: {command}')
+            if command == 'pause':
+                self.paused = True
+            elif command == 'resume':
+                self.paused = False
+            elif command == 'die':
+                # goodbye TT_TT
+                sys.exit()
 
     def play_loop(self):
 
@@ -262,21 +291,19 @@ class Player:
         self.update_state()
         sleep(uniform(2.5, 3.5))
 
-
-    def play(self):
-
+    def run(self):
         while True:
             try:
+                self.check_command()
+
+                while self.paused:
+                    sleep(1)
+                    self.check_command()
+                    
                 self.play_loop()
             except Exception as e:
                 
-                print(f'[GAME{self.game.id}] Player crashed with error: "{e}". \nRespawning in 3...')
+                self.logger.put(log('error', f'[GAME{self.game.id}] Player crashed with error: "{e}". \nRespawning in 3...'))
                 sleep(3)
                 self.refresh()
                 self.reset_player_stats()
-
-            
-
-
-def spawn_player(game, mouse_lock):
-    Player(game, mouse_lock).play()

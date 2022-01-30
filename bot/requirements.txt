@@ -1,4 +1,7 @@
 imagesize
 numpy
+opencv-python
+portpicker
 pyautogui
 Pillow
+PyQt6
