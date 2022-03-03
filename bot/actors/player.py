@@ -22,7 +22,7 @@ class Player(Process):
     state_img_map = {
         'error': ['error', 'error2'],
         'new_map': ['new_map', 'new_map2', 'new_map3'],
-        'login': ['connect'],
+        'login': ['connect-login', 'connect'],
         'main': ['treasure_mode'],
         'heroes': ['heroes_title', 'heroes_title2'],
         'playing': ['play_header', 'play_header2', 'play_header3']
